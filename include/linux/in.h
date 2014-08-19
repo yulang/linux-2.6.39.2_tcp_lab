@@ -37,6 +37,7 @@ enum {
   IPPROTO_GRE = 47,		/* Cisco GRE tunnels (rfc 1701,1702)	*/
 
   IPPROTO_IPV6	 = 41,		/* IPv6-in-IPv4 tunnelling		*/
+  IPPROTO_MYTCP = 42,
 
   IPPROTO_ESP = 50,            /* Encapsulation Security Payload protocol */
   IPPROTO_AH = 51,             /* Authentication Header protocol       */

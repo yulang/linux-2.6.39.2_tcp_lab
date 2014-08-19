@@ -1016,7 +1016,17 @@ static struct inet_protosw inetsw_array[] =
 	       .ops =        &inet_sockraw_ops,
 	       .no_check =   UDP_CSUM_DEFAULT,
 	       .flags =      INET_PROTOSW_REUSE,
-       }
+       },
+
+    {
+		.type =			SOCK_MYSTREAM,
+		.protocol =		IPPROTO_MYTCP,
+		.prot = 		&mytcp_prot,
+		.ops =        	&inet_mystream_ops,	/* YU: is it right? */
+		.no_check =   	0,
+		.flags =      	INET_PROTOSW_PERMANENT |
+			      INET_PROTOSW_ICSK,
+	}
 };
 
 #define INETSW_ARRAY_LEN ARRAY_SIZE(inetsw_array)
@@ -1501,6 +1511,18 @@ static const struct net_protocol tcp_protocol = {
 	.gso_segment =	tcp_tso_segment,
 	.gro_receive =	tcp4_gro_receive,
 	.gro_complete =	tcp4_gro_complete,
+	.no_policy =	1,
+	.netns_ok =	1,
+};
+
+static const struct net_protocol mytcp_protocol = {
+	/* YU: TO DO */
+	.handler =	mytcp_v4_rcv,
+	.err_handler =	mytcp_v4_err,
+	.gso_send_check = mytcp_v4_gso_send_check,
+	.gso_segment =	mytcp_tso_segment,
+	.gro_receive =	mytcp4_gro_receive,
+	.gro_complete =	mytcp4_gro_complete,
 	.no_policy =	1,
 	.netns_ok =	1,
 };
