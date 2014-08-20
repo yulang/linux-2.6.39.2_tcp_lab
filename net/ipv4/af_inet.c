@@ -921,6 +921,35 @@ const struct proto_ops inet_stream_ops = {
 };
 EXPORT_SYMBOL(inet_stream_ops);
 
+const struct proto_ops myinet_stream_ops = {
+	/* YL: TO DO */
+	.family		   = PF_INET,
+	.owner		   = THIS_MODULE,
+	.release	   = inet_release,
+	.bind		   = inet_bind,
+	.connect	   = inet_stream_connect,
+	.socketpair	   = sock_no_socketpair,
+	.accept		   = inet_accept,
+	.getname	   = inet_getname,
+	.poll		   = tcp_poll,
+	.ioctl		   = inet_ioctl,
+	.listen		   = inet_listen,
+	.shutdown	   = inet_shutdown,
+	.setsockopt	   = sock_common_setsockopt,
+	.getsockopt	   = sock_common_getsockopt,
+	.sendmsg	   = inet_sendmsg,
+	.recvmsg	   = inet_recvmsg,
+	.mmap		   = sock_no_mmap,
+	.sendpage	   = inet_sendpage,
+	.splice_read	   = tcp_splice_read,
+#ifdef CONFIG_COMPAT
+	.compat_setsockopt = compat_sock_common_setsockopt,
+	.compat_getsockopt = compat_sock_common_getsockopt,
+	.compat_ioctl	   = inet_compat_ioctl,
+#endif
+};
+EXPORT_SYMBOL(myinet_stream_ops);
+
 const struct proto_ops inet_dgram_ops = {
 	.family		   = PF_INET,
 	.owner		   = THIS_MODULE,
@@ -1022,7 +1051,7 @@ static struct inet_protosw inetsw_array[] =
 		.type =			SOCK_MYSTREAM,
 		.protocol =		IPPROTO_MYTCP,
 		.prot = 		&mytcp_prot,
-		.ops =        	&inet_mystream_ops,	/* YU: is it right? */
+		.ops =        	&myinet_stream_ops,	/* YL: is it right? */
 		.no_check =   	0,
 		.flags =      	INET_PROTOSW_PERMANENT |
 			      INET_PROTOSW_ICSK,
@@ -1673,6 +1702,8 @@ static int __init inet_init(void)
 		printk(KERN_CRIT "inet_init: Cannot add UDP protocol\n");
 	if (inet_add_protocol(&tcp_protocol, IPPROTO_TCP) < 0)
 		printk(KERN_CRIT "inet_init: Cannot add TCP protocol\n");
+	if (inet_add_protocol(&mytcp_protocol, IPPROTO_MYTCP) < 0)
+		printk(KERN_CRIT "inet_init: Cannot add MYTCP protocol\n");
 #ifdef CONFIG_IP_MULTICAST
 	if (inet_add_protocol(&igmp_protocol, IPPROTO_IGMP) < 0)
 		printk(KERN_CRIT "inet_init: Cannot add IGMP protocol\n");
