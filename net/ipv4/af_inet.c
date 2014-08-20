@@ -923,6 +923,7 @@ EXPORT_SYMBOL(inet_stream_ops);
 
 const struct proto_ops myinet_stream_ops = {
 	/* YL: TO DO */
+	/* YL: not need much change */
 	.family		   = PF_INET,
 	.owner		   = THIS_MODULE,
 	.release	   = inet_release,
@@ -1546,12 +1547,15 @@ static const struct net_protocol tcp_protocol = {
 
 static const struct net_protocol mytcp_protocol = {
 	/* YU: TO DO */
+	/*
+		Not implement functions related to GSO & 
+	*/
 	.handler =	mytcp_v4_rcv,
-	.err_handler =	mytcp_v4_err,
-	.gso_send_check = mytcp_v4_gso_send_check,
-	.gso_segment =	mytcp_tso_segment,
-	.gro_receive =	mytcp4_gro_receive,
-	.gro_complete =	mytcp4_gro_complete,
+	.err_handler =	tcp_v4_err,
+	.gso_send_check = tcp_v4_gso_send_check,
+	.gso_segment =	tcp_tso_segment,
+	.gro_receive =	tcp4_gro_receive,
+	.gro_complete =	tcp4_gro_complete,
 	.no_policy =	1,
 	.netns_ok =	1,
 };
@@ -1682,6 +1686,10 @@ static int __init inet_init(void)
 	if (rc)
 		goto out_unregister_udp_proto;
 
+	rc = proto_register(&mytcp_prot, 1);
+	if (rc)
+		goto out_unregister_raw_proto;
+
 	/*
 	 *	Tell SOCKET that we are alive...
 	 */
@@ -1769,6 +1777,8 @@ static int __init inet_init(void)
 	rc = 0;
 out:
 	return rc;
+out_unregister_raw_proto:
+	proto_unregister(&raw_prot); /* YL: change here */
 out_unregister_udp_proto:
 	proto_unregister(&udp_prot);
 out_unregister_tcp_proto:
@@ -1785,6 +1795,7 @@ fs_initcall(inet_init);
 #ifdef CONFIG_PROC_FS
 static int __init ipv4_proc_init(void)
 {
+	/* YL: operations to initialize the file system. Does this need to be changed? */
 	int rc = 0;
 
 	if (raw_proc_init())
