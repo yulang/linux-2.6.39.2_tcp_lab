@@ -50,6 +50,12 @@ static void __mytcp_v4_send_check(struct sk_buff *skb,
 
 void mytcp_v4_send_check(struct sock *sk, struct sk_buff *skb)
 {
+	/*
+		compute tcp checksum
+		encapsulate __mytcp_v4_send_check
+	*/
+	struct inet_sock *insk = inet_sk(sk);
+	__mytcp_v4_send_check(skb, inet->inet_saddr, inet->inet_daddr);
 
 }
 EXPORT_SYMBOL(mytcp_v4_send_check);
