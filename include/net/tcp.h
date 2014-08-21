@@ -859,6 +859,15 @@ static inline __sum16 tcp_v4_check(int len, __be32 saddr,
 	return csum_tcpudp_magic(saddr,daddr,len,IPPROTO_TCP,base);
 }
 
+/******************* YL: My implementation *************************/
+
+static inline __sum16 mytcp_v4_check(int len, __be32 saddr,
+				   __be32 daddr, __wsum base)
+{
+	return csum_tcpudp_magic(saddr,daddr,len,IPPROTO_MYTCP,base);
+}
+
+/*******************************************************************/
 static inline __sum16 __tcp_checksum_complete(struct sk_buff *skb)
 {
 	return __skb_checksum_complete(skb);

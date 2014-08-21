@@ -122,6 +122,36 @@ static struct sock *mytcp_v4_hnd_req(struct sock *sk, struct sk_buff *skb)
 
 static __sum16 mytcp_v4_checksum_init(struct sk_buff *skb)
 {
+	//static inline __sum16 tcp_v4_check(int len, __be32 saddr,
+	//			   __be32 daddr, __wsum base)
+	//封装了校验和计算函数csum_tcpudp_magic，用于计算伪首部
+
+	struct iphdr *iph = ip_hdr(skb);
+
+	if (skb->ip_summed == CHECKSUM_COMPLETE)
+	{
+		/* if the checksum has been done, then only check the pseudo header */
+		if (!mytcp_v4_check(skb->len, iph->saddr, iph->daddr, skb->csum))
+		{
+			skb->ip_summed = CHECKSUM_UNNECESSARY;
+			return 0;
+		}
+	}
+
+	//__wsum csum_tcpudp_nofold(__be32 saddr, __be32 daddr,
+	//			   unsigned short len,
+	//			   unsigned short proto,
+	//			   __wsum sum)
+
+	skb->csum = csum_tcpudp_nofold(iph->saddr, iph->daddr, skb->len, IPPROTO_MYTCP,0);
+
+	if (skb->len <= 76)
+	{
+		/* YL: if the skb is small enough, calculate the checksum of the whole packet */
+		return __skb_checksum_complete(skb);
+	}
+
+	return 0;
 
 }
 
