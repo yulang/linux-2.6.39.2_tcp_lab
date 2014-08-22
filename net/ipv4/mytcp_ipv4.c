@@ -31,6 +31,8 @@
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
 
+void mytcp_init_trans_para(struct tcp_sock* tsk);
+
 int mytcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
 
@@ -211,7 +213,14 @@ EXPORT_SYMBOL(myipv4_specific);
 
 static int mytcp_v4_init_sock(struct sock *sk)
 {
+	struct inet_connection_sock *icsk = inet_sk(sk);
+	struct tcp_sock *tsk = tcp_sk(sk);
 
+	skb_queue_head_init(&tsk->out_of_order_queue);
+	tcp_init_xmit_timers(sk);
+	tcp_prequeue_init(tsk);
+
+	icsk->icsk_rto = TCP_TIMEOUT_INIT; /* RFC 1122 */
 }
 
 void mytcp_v4_destroy_sock(struct sock *sk)
@@ -263,3 +272,8 @@ struct proto mytcp_prot = {
 };
 EXPORT_SYMBOL(mytcp_prot);
 
+void mytcp_init_trans_para(struct tcp_sock* tsk)
+{
+	tsk->mdev = TCP_TIMEOUT_INIT;
+	tsk->snd_cwnd = 2;
+}
