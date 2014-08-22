@@ -45,7 +45,23 @@ void mytcp_v4_err(struct sk_buff *icmp_skb, u32 info)
 static void __mytcp_v4_send_check(struct sk_buff *skb,
 				__be32 saddr, __be32 daddr)
 {
+	//__wsum csum_partial(const void *buff, int len, __wsum sum)
 
+	struct tcphdr *tcphd = tcp_hdr(skb);
+	__sum16 rst;
+
+	if (skb->ip_summed == CHECKSUM_PARTIAL)
+	{
+		rst = ~mytcp_v4_check(skb->len, saddr, daddr); /* calculate pesudo header checksum */
+		skb->csum_start = skb_transport_header(skb) - skb->head;
+		skb->csum_offset = offsetof(struct tcphdr, check);
+
+	} else {
+		/* calculate the checksum of the whole package */
+		rst = mytcp_v4_check(skb->len, saddr, daddr, csum_partial(tcphd, tcphd->doff << 2, skb->csum));
+	}
+
+	tcphd->check = rst;
 }
 
 void mytcp_v4_send_check(struct sock *sk, struct sk_buff *skb)
