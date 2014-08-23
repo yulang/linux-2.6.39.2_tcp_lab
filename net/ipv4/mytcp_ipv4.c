@@ -187,6 +187,47 @@ EXPORT_SYMBOL(mytcp_v4_do_rcv);
 
 int mytcp_v4_rcv(struct sk_buff *skb)
 {
+	/* the overall handle function when receiving data */
+
+	/*
+	 *	bug: skb might be bad
+	struct tcphdr *tcphd = tcp_hdr(skb);
+	struct iphdr *iph = ip_hdr(skb);
+	*/
+
+	struct tcphdr *tcphd;
+	struct iphdr *iph;
+	struct sock *sk; /* the owner sock of this SKB */
+	struct net *net = dev_net(skb->dev);
+
+	if (skb->pkt_type != PACKET_HOST)
+	{
+		/* if the packet is not for local host, discard it. */
+		goto discard_it;
+	}
+	TCP_INC_STATS_BH(net, TCP_MIB_INSEGS);
+
+//static inline int pskb_may_pull(struct sk_buff *skb, unsigned int len)
+//moving the tail of skb head forward
+
+	if (!pskb_may_pull(skb, sizeof(struct tcphdr)))
+	{
+		goto discard_it;
+	}
+
+	tcphd = tcp_hdr(skb);
+
+	if (tcphd->doff < sizeof(struct tcphdr) / 4)
+	{
+		goto bad_packet;
+	}
+
+	if (!pskb_may_pull(skb, tcphd->doff * 4))
+	{
+		goto discard_it;
+	}
+
+	/* then check the checksum of the pesudo header */
 
 }
 
@@ -263,6 +304,10 @@ static int mytcp_v4_init_sock(struct sock *sk)
 
 void mytcp_v4_destroy_sock(struct sock *sk)
 {
+	/* unfinished */
+	struct tcp_sock *tsk = tcp_sk(sk);
+	/* YL: TO DO */
+	percpu_counter_dec(&tcp_sockets_allocated);
 
 }
 EXPORT_SYMBOL(mytcp_v4_destroy_sock);
