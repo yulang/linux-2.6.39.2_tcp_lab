@@ -221,6 +221,44 @@ static int mytcp_v4_init_sock(struct sock *sk)
 	tcp_prequeue_init(tsk);
 
 	icsk->icsk_rto = TCP_TIMEOUT_INIT; /* RFC 1122 */
+
+	mytcp_init_trans_para(tsk);
+
+	icsk->icsk_ca_ops = &mytcp_init_congestion_ops;
+
+	sk->sk_state = TCP_CLOSE;
+
+	sk->sk_write_space = sk_stream_write_space;
+	sock_set_flag(sk, SOCK_USE_WRITE_QUEUE);
+
+	icsk->icsk_af_ops = &myipv4_specific;
+	icsk->icsk_sync_mss = tcp_sync_mss;	/* YL: TO DO */
+
+	/************** copied from original kernel *******************/
+
+#ifdef CONFIG_TCP_MD5SIG
+	tsk->af_specific = &tcp_sock_ipv4_specific;
+#endif
+
+	/* TCP Cookie Transactions */
+	if (sysctl_tcp_cookie_size > 0) {
+		/* Default, cookies without s_data_payload. */
+		tsk->cookie_values =
+			kzalloc(sizeof(*tsk->cookie_values),
+				sk->sk_allocation);
+		if (tsk->cookie_values != NULL)
+			kref_init(&tsk->cookie_values->kref);
+	}
+
+	/****************************************************************/
+
+	/* YL: TO DO */
+	sk->sk_sndbuf = sysctl_tcp_wmem[1];
+	sk->sk_rcvbuf = sysctl_tcp_rmem[1];
+
+	local_bh_disable();
+	percpu_counter_inc(&tcp_sockets_allocated);
+	local_bh_enable();
 }
 
 void mytcp_v4_destroy_sock(struct sock *sk)
@@ -276,4 +314,9 @@ void mytcp_init_trans_para(struct tcp_sock* tsk)
 {
 	tsk->mdev = TCP_TIMEOUT_INIT;
 	tsk->snd_cwnd = 2;
+	tsk->snd_ssthresh = TCP_INFINITE_SSTHRESH;
+	tsk->snd_cwnd_clamp = ~0;
+
+	tsk->mss_cache = TCP_MSS_DEFAULT;
+	tsk->reordering = sysctl_tcp_reordering;
 }

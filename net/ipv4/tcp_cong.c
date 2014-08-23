@@ -410,6 +410,17 @@ struct tcp_congestion_ops tcp_reno = {
 	.min_cwnd	= tcp_reno_min_cwnd,
 };
 
+struct tcp_congestion_ops mytcp_reno = {
+	/* YL: TO DO */
+	/* where is the claim in the head file? */
+	.flags		= TCP_CONG_NON_RESTRICTED,
+	.name		= "reno",
+	.owner		= THIS_MODULE,
+	.ssthresh	= tcp_reno_ssthresh,
+	.cong_avoid	= tcp_reno_cong_avoid,
+	.min_cwnd	= tcp_reno_min_cwnd,
+};
+
 /* Initial congestion control used (until SYN)
  * really reno under another name so we can tell difference
  * during tcp_set_default_congestion_control
@@ -422,3 +433,13 @@ struct tcp_congestion_ops tcp_init_congestion_ops  = {
 	.min_cwnd	= tcp_reno_min_cwnd,
 };
 EXPORT_SYMBOL_GPL(tcp_init_congestion_ops);
+
+struct tcp_congestion_ops mytcp_init_congetion_ops = {
+	/* YL: TO DO */
+	.name		= "",
+	.owner		= THIS_MODULE,
+	.ssthresh	= tcp_reno_ssthresh,
+	.cong_avoid	= tcp_reno_cong_avoid,
+	.min_cwnd	= tcp_reno_min_cwnd,
+};
+EXPORT_SYMBOL_GPL(mytcp_init_congestion_ops);
