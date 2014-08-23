@@ -196,7 +196,7 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 	*/
 
 	struct tcphdr *tcphd;
-	struct iphdr *iph;
+	struct iphdr *iphd;
 	struct sock *sk; /* the owner sock of this SKB */
 	struct net *net = dev_net(skb->dev);
 
@@ -228,6 +228,49 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 	}
 
 	/* then check the checksum of the pesudo header */
+	/* YL: is it right? */
+	if ((skb->ip_summed != CHECKSUM_UNNECESSARY) && (mytcp_v4_checksum_init(skb)))
+	{
+		goto bad_packet;
+	}
+
+	/* save the information in the tcp header to tcp private control block
+	 * change the endian to local endian 
+	 */
+
+	 /*
+	  *		struct tcp_skb_cb {
+	  * 	__u32		seq;		
+	  *		__u32		end_seq;	
+	  *		__u32		when;		
+	  *		__u8		flags;		
+	  *		__u8		sacked;	
+	  *		__u32		ack_seq;
+	  *		}
+	 */
+
+	iphd = ip_hdr(skb);
+	tcphd = tcp_hdr(skb);
+
+	TCP_SKB_CB(skb)->seq = ntohl(tcphd->seq);
+	/* only SYN, FIN and data consume seq */
+	TCP_SKB_CB(skb)->end_seq = TCP_SKB_CB(skb)->seq + tcphd->syn + tcphd->fin + skb->len - tcphd->doff * 4; 
+	TCP_SKB_CB(skb)->when = 0;
+	TCP_SKB_CB(skb)->flags = iphd->tos;
+	TCP_SKB_CB(skb)->sacked = 0;
+	TCP_SKB_CB(skb)->ack_seq = ntohl(tcphd->ack_seq);
+
+	/* look up owner sock in ehash or bhash */
+	/*static inline struct sock *__inet_lookup_skb(struct inet_hashinfo *hashinfo,
+	 *				     struct sk_buff *skb,
+	 *				     const __be16 sport,
+	 *				     const __be16 dport) */
+	sk = __inet_lookup_skb(&tcp_hashinfo, skb, tcphd->source, tcphd->dest);
+
+	if (!sk)
+	{
+		goto no_tcp_socket;
+	}
 
 }
 
