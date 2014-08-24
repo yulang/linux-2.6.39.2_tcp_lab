@@ -199,6 +199,7 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 	struct iphdr *iphd;
 	struct sock *sk; /* the owner sock of this SKB */
 	struct net *net = dev_net(skb->dev);
+	int rst = 0;
 
 	if (skb->pkt_type != PACKET_HOST)
 	{
@@ -247,7 +248,7 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 	  *		__u8		sacked;	
 	  *		__u32		ack_seq;
 	  *		}
-	 */
+	  */
 
 	iphd = ip_hdr(skb);
 	tcphd = tcp_hdr(skb);
@@ -272,6 +273,55 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 		goto no_tcp_socket;
 	}
 
+	/* following codes begin to handle the received packet according to the sock state */
+	if (sk->sk_state == TCP_TIME_WAIT)
+	{
+		goto do_time_wait;
+	}
+
+	if (inet_sk(sk)->min_ttl > iphd->ttl)
+	{
+		// min_ttl is a new member added in this version of kernel
+		NET_INC_STATS_BH(net, LINUX_MIB_TCPMINTTLDROP);
+		//goto discard_it;
+		goto discard_and_release; /* we have got the sk, so it should be released while discarding the packet */
+	}
+	/* copied from original kernel */
+	if (!xfrm4_policy_check(sk, XFRM_POLICY_IN, skb))
+		goto discard_and_release;
+
+	nf_reset(skb); /* init netfilter */
+	if (sk_filter(sk, skb))
+	{
+		goto discard_and_release;
+	}
+
+	skb->dev = NULL;
+
+	bh_lock_sock_nested(sk); /* lock sock */
+
+	if (!sock_owned_by_user(sk))
+	{
+		if (!tcp_prequeue(sk, skb))
+		{
+			/* leave the DMA option */
+			/* if the packet is not added to prequeue, call do_rcv to handle it */
+			rst = mytcp_v4_do_rcv(sk, skb);
+		}
+	} else {
+		sk_add_backlog(sk, skb);
+	}
+
+	bh_unlock_sock(sk);
+
+	sock_put(sk);
+	return rst;
+
+	/* handle exceptions */
+
+no_tcp_socket:
+	if (!xfrm4_policy_check(NULL, XFRM_POLICY_IN, skb))
+		goto discard_it;
 }
 
 const struct inet_connection_sock_af_ops myipv4_specific = {
