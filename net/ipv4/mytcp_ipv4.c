@@ -181,6 +181,67 @@ static __sum16 mytcp_v4_checksum_init(struct sk_buff *skb)
 
 int mytcp_v4_do_rcv(struct sock *sk, struct sk_buff *skb)
 {
+	/*
+	 * 		STATE      			HANDLE FUNCTION
+	 *
+	 * 		ESTABLISHED			TCP_RCV_ESTABLISHED
+	 *		LISTEN(HALF CON)	TCP_V4_HND_REQ
+	 *		ELS 				TCP_RCV_STATE_PROCESS
+	 */
+
+	 struct sock *dst_sk; /* the target sock that RST should be sent to */
+
+	 if (sk->sk_state == TCP_ESTABLISHED) /* fast path */
+	 {
+	 	sock_rps_save_rxhash(sk, skb->rxhash);
+
+	 	/*	int tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
+		*	struct tcphdr *th, unsigned len)
+	 	*/
+	 	if (mytcp_rcv_established(sk, skb, tcp_hdr(skb), skb->len)) {
+	 		dst_sk = sk;
+	 		goto snd_rst;
+	 	}
+	 	return 0;
+	 }
+
+	 if (tcp_checksum_complete(skb) ||skb->len < tcp_hdrlen(skb))
+	 {
+	 	/* checksum init is done in v4_rcv */
+	 	goto checksum_err;
+	 }
+
+	 if (sk->sk_state == TCP_LISTEN)
+	 {
+	 	struct sock *chd_sk = mytcp_v4_hnd_req(sk, skb); /* handle the last ACK in third handshake */
+	 	if (!chd_sk)
+	 		goto discard;
+
+	 	if (chd_sk != sk) {
+	 		/* yeah we got a new child sock, the connection is established */
+	 		if (mytcp_child_process(sk, chd_sk, skb)) {
+	 			dst_sk = chd_sk;
+	 			goto snd_rst;
+	 		}
+	 		return 0;
+	 	}
+	 } else
+	 	sock_rps_save_rxhash(sk, skb->rxhash);
+	 if (mytcp_rcv_state_process(sk, skb, tcp_hdr(skb), skb->len)) {
+		dst_sk = sk;
+		goto snd_rst;
+	 }
+	 return 0;
+
+snd_rst:
+	mytcp_v4_send_reset(dst_sk, skb);
+discard:
+	kfree_skb(skb);
+	return 0;
+
+checksum_err:
+	TCP_INC_STATS_BH(sock_net(sk), TCP_MIB_INERRS);
+	goto discard;
 
 }
 EXPORT_SYMBOL(mytcp_v4_do_rcv);
