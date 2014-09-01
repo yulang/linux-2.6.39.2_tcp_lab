@@ -273,6 +273,7 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 		goto no_tcp_socket;
 	}
 
+process:
 	/* following codes begin to handle the received packet according to the sock state */
 	if (sk->sk_state == TCP_TIME_WAIT)
 	{
@@ -322,6 +323,24 @@ int mytcp_v4_rcv(struct sk_buff *skb)
 no_tcp_socket:
 	if (!xfrm4_policy_check(NULL, XFRM_POLICY_IN, skb))
 		goto discard_it;
+
+	if (skb->len < (th->doff << 2) || tcp_checksum_complete(skb)) {
+bad_packet:
+		TCP_INC_STATS_BH(net, TCP_MIB_INERRS);
+	} else {
+		//send RST to the other end
+		mytcp_v4_send_reset(NULL, skb);
+	}
+discard_and_release:
+	/* free the sock preempted by kernel */
+	sock_put(sk);
+
+discard_it:
+	kfree_skb(skb);
+	return 0;
+do_time_wait:
+	/* handle the case where the connection is about to end */
+	/* YL: TO DO */
 }
 
 const struct inet_connection_sock_af_ops myipv4_specific = {
